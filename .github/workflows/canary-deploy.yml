@@ -1,36 +1,87 @@
-name: Canary Deployment to Lambda
+name: Canary Deployment with Slack Alerts and Rollback
+
+description: >
+  GitHub Actions workflow to deploy AWS Lambda using canary strategy (10% → 100%),
+  with Slack notifications and rollback on failure.
 
 on:
   workflow_dispatch:
 
 jobs:
   deploy:
-    name: Canary Deploy to Lambda
+    name: Canary Deployment to Lambda
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Notify Slack – Canary Start
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"🚀 Starting *Canary Deployment* for NoKargo Lambda (10%)..."}' \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
 
       - name: Shift 10% Traffic to Canary (v2)
         run: |
           aws lambda update-alias \
-            --function-name autoDisableIAMUser \
+            --function-name ${{ secrets.LAMBDA_FUNCTION_NAME }} \
             --name prod \
             --routing-config '{"AdditionalVersionWeights":{"2":0.1}}' \
             --function-version 1
 
+      - name: Notify Slack – Canary Shift Success
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"✅ 10% Canary Traffic shifted successfully."}' \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
+
       - name: Shift 100% Traffic to v2 After Validation
         run: |
           aws lambda update-alias \
-            --function-name autoDisableIAMUser \
+            --function-name ${{ secrets.LAMBDA_FUNCTION_NAME }} \
             --name prod \
             --function-version 2 \
             --routing-config '{}'
+
+      - name: Notify Slack – Full Rollout Success
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"🎉 Full Traffic successfully shifted to *v2* for NoKargo Lambda!"}' \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    continue-on-error: false
+
+  rollback:
+    name: Rollback on Deployment Failure
+    if: failure()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Rollback Traffic to Version 1
+        run: |
+          aws lambda update-alias \
+            --function-name ${{ secrets.LAMBDA_FUNCTION_NAME }} \
+            --name prod \
+            --function-version 1 \
+            --routing-config '{}'
+
+      - name: Notify Slack – Rollback Triggered
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"⚠️ Deployment failed. Rollback to *v1* completed for NoKargo Lambda."}' \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
