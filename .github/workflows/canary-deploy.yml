@@ -5,17 +5,19 @@ on:
 
 jobs:
   deploy:
+    name: Canary Deploy to Lambda
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: us-east-1
 
       - name: Shift 10% Traffic to Canary (v2)
         run: |
@@ -30,4 +32,5 @@ jobs:
           aws lambda update-alias \
             --function-name autoDisableIAMUser \
             --name prod \
-            --function-version 2
+            --function-version 2 \
+            --routing-config '{}'
