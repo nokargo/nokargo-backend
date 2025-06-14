@@ -1,0 +1,35 @@
+name: 🚀 Slack Notification Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  slack-alert-test:
+    name: 🚀 Send Slack Notification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ✅ Send success alert to Slack
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{
+              "text": "🚀 *Test Alert:* GitHub Actions Slack Integration for *NoKargo* is working!",
+              "attachments": [
+                {
+                  "color": "#2eb886",
+                  "fields": [
+                    {
+                      "title": "Environment",
+                      "value": "Test",
+                      "short": true
+                    },
+                    {
+                      "title": "Status",
+                      "value": "Success ✅",
+                      "short": true
+                    }
+                  ]
+                }
+              ]
+            }' \
+            ${{ secrets.SLACK_WEBHOOK_URL }}
