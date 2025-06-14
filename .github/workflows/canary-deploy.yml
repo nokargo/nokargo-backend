@@ -1,0 +1,33 @@
+name: Canary Deployment to Lambda
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Shift 10% Traffic to Canary (v2)
+        run: |
+          aws lambda update-alias \
+            --function-name autoDisableIAMUser \
+            --name prod \
+            --routing-config '{"AdditionalVersionWeights":{"2":0.1}}' \
+            --function-version 1
+
+      - name: Shift 100% Traffic to v2 After Validation
+        run: |
+          aws lambda update-alias \
+            --function-name autoDisableIAMUser \
+            --name prod \
+            --function-version 2
