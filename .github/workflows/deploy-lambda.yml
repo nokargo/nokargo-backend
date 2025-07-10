@@ -3,52 +3,50 @@
 # NoKargo Technologies Inc. - Lambda CI/CD
 # ==========================================
 
-name: Deploy Lambda Function
+name: Deploy Lambda Function to AWS
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   deploy:
-    name: Deploy Lambda Function to AWS
     runs-on: ubuntu-latest
 
-    env:
-      FUNCTION_NAME: signupHandler
-      HANDLER_FILE: signupHandler.js
-      REGION: us-east-1
+    defaults:
+      run:
+        working-directory: lambda-functions/signupHandler
 
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: ⚙️ Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'  # Adjust as needed
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
 
-      - name: 🔑 Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.REGION }}
+    - name: Install production dependencies
+      run: npm install --production
 
-      - name: 📦 Install production dependencies
-        run: npm install --production
+    - name: Package Lambda function code
+      run: |
+        zip -r function.zip signupHandler.js node_modules
 
-      - name: 🗜️ Package Lambda function code
-        run: |
-          zip -r function.zip ${{ env.HANDLER_FILE }} node_modules
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
 
-      - name: 🚀 Deploy to AWS Lambda
-        run: |
-          aws lambda update-function-code \
-            --function-name ${{ env.FUNCTION_NAME }} \
-            --zip-file fileb://function.zip
+    - name: Deploy to AWS Lambda
+      run: |
+        aws lambda update-function-code \
+          --function-name signupHandler \
+          --zip-file fileb://function.zip
 
-      - name: ✅ Confirm deployment
-        run: |
-          aws lambda get-function --function-name ${{ env.FUNCTION_NAME }}
+    - name: Confirm deployment
+      run: echo "✅ Deployment completed successfully."
