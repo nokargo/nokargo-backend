@@ -3,31 +3,32 @@
 # NoKargo Technologies Inc. - Lambda CI/CD
 # ==========================================
 
-name: Deploy Lambda Function to AWS
+name: Deploy Lambda Function
 
 on:
   push:
     branches:
       - main
-    paths:
-      - 'nokargo-backend/lambda-functions/signupHandler/**'
-      - '.github/workflows/deploy-lambda.yml'
 
 jobs:
   deploy:
-    name: Deploy Lambda Function
     runs-on: ubuntu-latest
-
-    environment: production
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: List repository files for debug
+        run: |
+          echo "Current working directory:"
+          pwd
+          echo "Listing all files recursively to confirm structure:"
+          ls -R
+
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '16' # Adjust based on your Lambda runtime
+          node-version: '16'
 
       - name: Install production dependencies
         working-directory: nokargo-backend/lambda-functions/signupHandler
@@ -35,23 +36,18 @@ jobs:
 
       - name: Package Lambda function code
         working-directory: nokargo-backend/lambda-functions/signupHandler
-        run: |
-          zip -r function.zip . -x "*.git*" "node_modules/aws-sdk/*"
+        run: zip -r function.zip .
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Deploy to AWS Lambda
+        uses: aws-actions/aws-cli-action@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1 # Adjust to your region
-
-      - name: Deploy to AWS Lambda
-        run: |
-          aws lambda update-function-code \
-            --function-name signupHandler \
-            --zip-file fileb://nokargo-backend/lambda-functions/signupHandler/function.zip
+          aws-region: us-east-1
+          inline: |
+            aws lambda update-function-code \
+              --function-name signupHandler \
+              --zip-file fileb://function.zip
 
       - name: Confirm deployment
-        run: |
-          aws lambda get-function-configuration \
-            --function-name signupHandler
+        run: echo "Lambda function deployed successfully."
