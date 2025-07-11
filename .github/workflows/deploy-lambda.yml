@@ -38,16 +38,19 @@ jobs:
         working-directory: nokargo-backend/lambda-functions/signupHandler
         run: zip -r function.zip .
 
-      - name: Deploy to AWS Lambda
-        uses: aws-actions/aws-cli-action@v1
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
-          inline: |
-            aws lambda update-function-code \
-              --function-name signupHandler \
-              --zip-file fileb://function.zip
+
+      - name: Deploy to AWS Lambda
+        working-directory: nokargo-backend/lambda-functions/signupHandler
+        run: |
+          aws lambda update-function-code \
+            --function-name signupHandler \
+            --zip-file fileb://function.zip
 
       - name: Confirm deployment
         run: echo "Lambda function deployed successfully."
