@@ -1,0 +1,59 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  NoKargo Technologies Inc. Backend – SAM Template
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 256
+    Runtime: python3.12
+    Architectures:
+      - x86_64
+
+Resources:
+  SubmitLoadFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: SubmitLoad
+      Handler: submit_load.lambda_handler
+      CodeUri: src/submit_load/
+      Events:
+        ApiPostLoad:
+          Type: Api
+          Properties:
+            Path: /submit
+            Method: post
+
+  MatchTravelerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: MatchTraveler
+      Handler: match_traveler.lambda_handler
+      CodeUri: src/match_traveler/
+      Events:
+        ApiMatch:
+          Type: Api
+          Properties:
+            Path: /match
+            Method: post
+
+  NoKargoTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: NoKargoData
+      PrimaryKey:
+        Name: id
+        Type: String
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+Outputs:
+  SubmitLoadApi:
+    Description: "POST endpoint for submitting loads"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/submit"
+
+  MatchTravelerApi:
+    Description: "POST endpoint for matching travelers"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/match"
